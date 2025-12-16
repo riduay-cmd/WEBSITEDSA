@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Hospital Queue System</title>
+    
+    <style>
+        :root {
+            --color-primary: #007bff; /* Blue */
+            --color-success: #28a745; /* Green */
+            --color-warning: #ffc107; /* Yellow */
+            --color-danger: #dc3545; /* Red for Emergency */
+            --color-background: #f4f7f6;
+            --color-card-bg: #ffffff;
+            --color-text: #333;
+            --border-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 2fr; /* Layout for check-in and queue */
+            gap: 20px;
+        }
+
+        /* Cards (Sections) */
+        .card {
+            background-color: var(--color-card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        #checkin-section { grid-column: 1 / 2; }
+        #queue-section { grid-column: 2 / 3; }
+        #management-section { 
+            grid-column: 1 / 2; 
+            margin-top: 20px;
+        }
+
+        /* Forms */
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+            width: 100%; 
+        }
+
+        .btn.primary { background-color: var(--color-primary); color: white; }
+        .btn.primary:hover { background-color: #0056b3; }
+
+        .btn.success { background-color: var(--color-success); color: white; }
+        .btn.success:hover { background-color: #1e7e34; }
+
+        .btn.secondary { background-color: #6c757d; color: white; }
+        .btn.secondary:hover { background-color: #5a6268; }
+
+        /* Queue List */
+        .queue-header {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1.5fr;
+            font-weight: bold;
+            padding: 10px 0;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 5px;
+        }
+
+        .queue-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .queue-item {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1.5fr;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+        }
+
+        .queue-item:hover {
+            background-color: #f9f9f9;
+        }
+
+        .priority-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Priority Colors */
+        .priority-1 { background-color: var(--color-danger); color: white; } /* Emergency (Red) */
+        .priority-2 { background-color: var(--color-warning); color: var(--color-text); } /* Urgent (Yellow) */
+        .priority-3 { background-color: #5bc0de; color: white; } /* Standard (Light Blue) */
+
+        .empty-message {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-style: italic;
+        }
+
+        hr {
+            margin: 20px 0;
+            border: 0;
+            border-top: 1px solid #eee;
+        }
+
+        .served-info, .search-info {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .served-info { background-color: #d4edda; } 
+        .search-info { background-color: #cce5ff; } 
+
+        footer {
+            text-align: center;
+            padding: 15px;
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+            color: #777;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            #checkin-section, #queue-section, #management-section {
+                grid-column: 1 / -1;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🏥 Smart Hospital Queue Manager</h1>
+    </header>
+
+    <main class="container">
+        
+        <section class="card" id="checkin-section">
+            <h2>Patient Check-In (New Entry)</h2>
+            <form id="checkin-form">
+                <label for="name">Patient Name:</label>
+                <input type="text" id="name" required>
+                
+                <label for="priority">Triage/Priority Level:</label>
+                <select id="priority" required>
+                    <option value="3">3 - Standard (Routine)</option>
+                    <option value="2">2 - Priority (Urgent)</option>
+                    <option value="1">1 - Emergency (Immediate)</option>
+                </select>
+                
+                <label for="contact">Contact Info:</label>
+                <input type="text" id="contact" placeholder="Phone/Email" required>
+                
+                <button type="submit" class="btn primary">Add to Queue</button>
+            </form>
+        </section>
+
+        <section class="card" id="queue-section">
+            <h2>Current Queue List</h2>
+            <div class="queue-header">
+                <span>Priority</span>
+                <span>Patient Name</span>
+                <span>Time Added</span>
+            </div>
+            <ul id="queue-list" class="queue-list">
+                <li class="empty-message">The queue is currently empty.</li>
+            </ul>
+        </section>
+
+        <section class="card" id="management-section">
+            <h2>Queue Management</h2>
+            <button id="serve-next-btn" class="btn success">Serve Next Patient</button>
+            <p id="served-message" class="served-info"></p>
+            
+            <hr>
+            
+            <h3>Search Patient (Search)</h3>
+            <input type="text" id="search-input" placeholder="Enter patient name">
+            <button id="search-btn" class="btn secondary">Search</button>
+            <p id="search-result" class="search-info"></p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Smart Hospital Queue System | Built using Web App (HTML/CSS/JS)</p>
+    </footer>
+
+    <script>
+        // --- Data Structure: Priority Queue Implementation ---
+
+        /**
+         * @class Patient
+         * @description Represents a single patient record (Hash Map structure).
+         */
+        class Patient {
+            constructor(name, priority, contact) {
+                this.name = name;
+                this.priority = parseInt(priority); // 1 (Emergency) is highest priority
+                this.contact = contact;
+                this.time = new Date(); // Time stamp for FIFO tie-breaker
+            }
+        }
+
+        /**
+         * @class PriorityQueue
+         * @description Manages patient ordering using priority-based insertion logic.
+         */
+        class PriorityQueue {
+            constructor() {
+                this.items = []; // Uses an Array to simulate the queue
+            }
+
+            // Traversal/Check operation
+            isEmpty() {
+                return this.items.length === 0;
+            }
+
+            /**
+             * @method enqueue (Insertion & Sorting - Non-trivial Algorithm)
+             * @description Inserts a new patient at the correct position based on priority.
+             * For equal priorities, it maintains FIFO order.
+             */
+            enqueue(patient) {
+                let added = false;
+                
+                // Traverse the array to find the correct position
+                for (let i = 0; i < this.items.length; i++) {
+                    // Check 1: Priority check (Lower number = Higher precedence)
+                    if (patient.priority < this.items[i].priority) {
+                        this.items.splice(i, 0, patient); // Insert before current item
+                        added = true;
+                        break;
+                    } 
+                    // If priorities are equal (P2 vs P2), we continue iterating. 
+                    // This ensures the new patient is placed after all existing patients 
+                    // of the same priority, maintaining FIFO.
+                }
+
+                // If not added (lowest priority or equal priority at the very end), push to the end
+                if (!added) {
+                    this.items.push(patient);
+                }
+            }
+
+            /**
+             * @method dequeue (Deletion)
+             * @description Removes and returns the highest priority patient (always at index 0).
+             */
+            dequeue() {
+                if (this.isEmpty()) {
+                    return null;
+                }
+                return this.items.shift();
+            }
+
+            /**
+             * @method getQueue (Traversal)
+             * @description Returns the entire queue array in its current service order.
+             */
+            getQueue() {
+                return this.items;
+            }
+
+            /**
+             * @method search (Searching)
+             * @description Finds patients by partial name match.
+             */
+            search(name) {
+                const query = name.toLowerCase();
+                return this.items.filter(patient => 
+                    patient.name.toLowerCase().includes(query) // Filters the array
+                );
+            }
+        }
+
+        // Global instance of the Queue
+        const hospitalQueue = new PriorityQueue();
+
+        // Global variables for DOM elements (Fixes scope issue for handleCheckIn)
+        let checkinForm, serveNextBtn, searchBtn;
+
+
+        // --- DOM Manipulation and Event Listeners ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Assign global variables on load
+            checkinForm = document.getElementById('checkin-form');
+            serveNextBtn = document.getElementById('serve-next-btn');
+            searchBtn = document.getElementById('search-btn');
+
+            // Set up event listeners
+            checkinForm.addEventListener('submit', handleCheckIn);
+            serveNextBtn.addEventListener('click', handleServeNext);
+            searchBtn.addEventListener('click', handleSearch);
+
+            updateQueueDisplay(); // Load the initial view
+        });
+
+
+        /**
+         * @function handleCheckIn (Insertion Logic)
+         * @description Collects form data, creates a new Patient object, and adds it to the Priority Queue.
+         */
+        function handleCheckIn(event) {
+            event.preventDefault(); // <-- CRITICAL: Prevents page refresh on form submission
+
+            const nameInput = document.getElementById('name');
+            const priorityInput = document.getElementById('priority');
+            const contactInput = document.getElementById('contact');
+
+            const newPatient = new Patient(
+                nameInput.value,
+                priorityInput.value,
+                contactInput.value
+            );
+
+            hospitalQueue.enqueue(newPatient); // Perform insertion
+            
+            checkinForm.reset(); // Reset form fields using the global variable
+            
+            updateQueueDisplay(); // Update the queue list
+        }
+
+
+        /**
+         * @function handleServeNext (Deletion Logic)
+         * @description Calls dequeue to remove and report the next patient to be served.
+         */
+        function handleServeNext() {
+            const servedPatient = hospitalQueue.dequeue(); // Perform deletion
+
+            const servedMessage = document.getElementById('served-message');
+            
+            if (servedPatient) {
+                servedMessage.textContent = `✅ Successfully served: ${servedPatient.name} (Priority: ${servedPatient.priority}).`;
+                servedMessage.style.backgroundColor = '#d4edda';
+                setTimeout(() => servedMessage.textContent = '', 5000); 
+            } else {
+                servedMessage.textContent = `❌ The queue is empty.`;
+                servedMessage.style.backgroundColor = '#f8d7da';
+            }
+            
+            updateQueueDisplay();
+        }
+
+
+        /**
+         * @function handleSearch (Searching Logic)
+         * @description Filters the queue based on the search input and displays the results.
+         */
+        function handleSearch() {
+            const searchInput = document.getElementById('search-input');
+            const searchResult = document.getElementById('search-result');
+            
+            // Check if input is empty before searching
+            const searchName = searchInput.value.trim();
+            if (searchName === "") {
+                searchResult.textContent = `Please enter a name to search.`;
+                searchResult.style.backgroundColor = '#ffc107'; // Warning color
+                return;
+            }
+
+            const results = hospitalQueue.search(searchName); // Perform search
+
+            if (results.length > 0) {
+                searchResult.innerHTML = `
+                    <strong>Found ${results.length} result(s):</strong>
+                    <ul>
+                        ${results.map(p => `<li>${p.name} (<span class="priority-badge priority-${p.priority}">P${p.priority}</span>) - Queued at ${p.time.toLocaleTimeString()}</li>`).join('')}
+                    </ul>
+                `;
+                searchResult.style.backgroundColor = '#cce5ff';
+            } else {
+                searchResult.textContent = `No patients found matching "${searchName}".`;
+                searchResult.style.backgroundColor = '#f8d7da'; 
+            }
+        }
+
+
+        /**
+         * @function updateQueueDisplay (Traversal Logic)
+         * @description Reads the current queue and renders the HTML list to the user interface.
+         */
+        function updateQueueDisplay() {
+            const queueList = document.getElementById('queue-list');
+            queueList.innerHTML = ''; // Clear current list
+
+            const queueItems = hospitalQueue.getQueue(); // Perform traversal
+
+            if (queueItems.length === 0) {
+                queueList.innerHTML = '<li class="empty-message">The queue is currently empty.</li>';
+                return;
+            }
+
+            queueItems.forEach(patient => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('queue-item');
+                
+                const priorityBadge = `<span class="priority-badge priority-${patient.priority}">P${patient.priority}</span>`;
+
+                const timeString = patient.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                listItem.innerHTML = `
+                    <div>${priorityBadge}</div>
+                    <div>${patient.name}</div>
+                    <div>${timeString}</div>
+                `;
+                queueList.appendChild(listItem);
+            });
+        }
+    </script>
+</body>
+</html>
